@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate Guardian - AI Disaster Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #131313;
+            color: #e8e8e8;
+            overflow: hidden;
+        }
+        .container { display: flex; height: 100vh; }
+        .sidebar {
+            width: 280px;
+            background: #1c1b1b;
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .main-content { flex: 1; display: flex; flex-direction: column; }
+        .header {
+            background: #1c1b1b;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(64, 71, 82, 0.15);
+        }
+        .content { flex: 1; padding: 24px; overflow-y: auto; display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .title { font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: #9e9e9e; margin-bottom: 16px; }
+        .param-item { margin-bottom: 24px; }
+        .param-header { display: flex; justify-between; align-items: center; margin-bottom: 8px; }
+        .param-label { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: #9e9e9e; }
+        .param-value { font-size: 0.875rem; font-weight: 500; }
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #353534;
+            outline: none;
+            border-radius: 2px;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #9ecaff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .risk-circle {
+            width: 140px;
+            height: 140px;
+            margin: 32px auto;
+            position: relative;
+        }
+        .risk-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .risk-percentage-value { font-size: 2.5rem; font-weight: 300; }
+        .risk-label { font-size: 0.75rem; background: rgba(255, 152, 0, 0.3); color: #ffb74d; padding: 4px 12px; border-radius: 2px; margin-top: 8px; display: inline-block; }
+        .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: center; margin-top: 24px; }
+        .risk-grid-item { }
+        .risk-grid-label { font-size: 0.75rem; color: #757575; }
+        .risk-grid-value { font-size: 1.5rem; font-weight: 300; }
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #9ecaff 0%, #2196f3 100%);
+            color: #131313;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            margin: 24px 0;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(158, 202, 255, 0.3); }
+        .card {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .alert-critical {
+            background: rgba(244, 67, 54, 0.2);
+            color: #ffb4ab;
+            padding: 16px;
+            border-radius: 6px;
+            border-left: 4px solid #F44336;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .map-placeholder {
+            height: 400px;
+            background: #212121;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 24px;
+        }
+        .simulation-controls {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            background: rgba(42, 42, 42, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 16px;
+            border-radius: 6px;
+        }
+        .route-item {
+            background: #353534;
+            padding: 16px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .route-badge {
+            width: 32px;
+            height: 32px;
+            background: #9ecaff;
+            color: #131313;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+        .status-open { background: rgba(76, 175, 80, 0.2); color: #81c784; padding: 4px 12px; border-radius: 2px; font-size: 0.75rem; }
+        .status-clear { background: rgba(33, 150, 243, 0.2); color: #64b5f6; padding: 4px 12px; border-radius: 2px; font-size: 0.75rem; }
+        .status-partial { background: rgba(255, 193, 7, 0.2); color: #ffd54f; padding: 4px 12px; border-radius: 2px; font-size: 0.75rem; }
+        table { width: 100%; font-size: 0.875rem; }
+        th { text-align: left; padding: 12px 0; border-bottom: 1px solid rgba(64, 71, 82, 0.15); font-size: 0.75rem; font-weight: 500; text-transform: uppercase; color: #9e9e9e; }
+        td { padding: 12px 0; border-bottom: 1px solid rgba(64, 71, 82, 0.15); }
+        .hash { color: #757575; }
+        .alert-item {
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .alert-critical-item { background: rgba(244, 67, 54, 0.2); border-left: 4px solid #F44336; }
+        .alert-warning-item { background: rgba(255, 193, 7, 0.2); border-left: 4px solid #FFC107; }
+        .alert-info-item { background: rgba(76, 175, 80, 0.2); border-left: 4px solid #4CAF50; }
+        .alert-header { display: flex; justify-between; margin-bottom: 8px; font-weight: 500; font-size: 0.875rem; }
+        .alert-time { font-size: 0.75rem; color: #757575; }
+        .alert-desc { font-size: 0.75rem; color: #9e9e9e; }
+        .fab {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+        }
+        .header-left { display: flex; align-items: center; gap: 32px; }
+        .logo { font-size: 1.25rem; font-weight: 300; color: #9ecaff; }
+        .location { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; }
+        .nav { display: flex; gap: 24px; font-size: 0.875rem; }
+        .nav-item { color: #757575; cursor: pointer; padding-bottom: 4px; }
+        .nav-item.active { color: #9ecaff; border-bottom: 2px solid #9ecaff; }
+        .header-right { display: flex; align-items: center; gap: 24px; }
+        .time { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; }
+        .avatar { width: 32px; height: 32px; background: #9ecaff; color: #131313; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 0.875rem; }
+        .material-icons { font-size: 20px; cursor: pointer; }
+        .brief-section { margin-bottom: 24px; }
+        .brief-title { font-size: 0.75rem; font-weight: 500; color: #9e9e9e; margin-bottom: 8px; text-transform: uppercase; }
+        .brief-content { font-size: 0.875rem; line-height: 1.6; }
+        .brief-urgent { color: #F44336; }
+        .resources { display: flex; gap: 24px; margin-top: 16px; }
+        .resource-item { display: flex; align-items: center; gap: 8px; }
+        .resource-value { font-size: 1.5rem; font-weight: 300; }
+        .resource-label { font-size: 0.75rem; color: #757575; }
+        .chip-verified { background: rgba(76, 175, 80, 0.2); color: #81c784; padding: 4px 12px; border-radius: 2px; font-size: 0.75rem; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- LEFT SIDEBAR -->
+        <div class="sidebar">
+            <div class="title">LIVE PARAMETERS</div>
+            <div style="font-size: 0.75rem; color: #757575; margin-bottom: 32px;">DISTRICT ALPHA-7</div>
+            
+            <div class="param-item">
+                <div class="param-header">
+                    <div class="param-label">
+                        <span class="material-icons" style="font-size: 16px; color: #9ecaff;">water_drop</span>
+                        <span>RAINFALL</span>
+                    </div>
+                    <div class="param-value"><span id="rainfall-value">45</span>mm/hr</div>
+                </div>
+                <input type="range" min="0" max="300" value="45" oninput="document.getElementById('rainfall-value').textContent = this.value">
+            </div>
+
+            <div class="param-item">
+                <div class="param-header">
+                    <div class="param-label">
+                        <span class="material-icons" style="font-size: 16px; color: #9ecaff;">air</span>
+                        <span>WIND SPEED</span>
+                    </div>
+                    <div class="param-value"><span id="wind-value">65</span>km/h</div>
+                </div>
+                <input type="range" min="0" max="200" value="65" oninput="document.getElementById('wind-value').textContent = this.value">
+            </div>
+
+            <div class="param-item">
+                <div class="param-header">
+                    <div class="param-label">
+                        <span class="material-icons" style="font-size: 16px; color: #9ecaff;">opacity</span>
+                        <span>HUMIDITY</span>
+                    </div>
+                    <div class="param-value"><span id="humidity-value">78</span>%</div>
+                </div>
+                <input type="range" min="0" max="100" value="78" oninput="document.getElementById('humidity-value').textContent = this.value">
+            </div>
+
+            <div class="param-item">
+                <div class="param-header">
+                    <div class="param-label">
+                        <span class="material-icons" style="font-size: 16px; color: #9ecaff;">grass</span>
+                        <span>SOIL MOISTURE</span>
+                    </div>
+                    <div class="param-value"><span id="soil-value">62</span>%</div>
+                </div>
+                <input type="range" min="0" max="100" value="62" oninput="document.getElementById('soil-value').textContent = this.value">
+            </div>
+
+            <div class="param-item">
+                <div class="param-header">
+                    <div class="param-label">
+                        <span class="material-icons" style="font-size: 16px; color: #9ecaff;">thermostat</span>
+                        <span>TEMPERATURE</span>
+                    </div>
+                    <div class="param-value"><span id="temp-value">32</span>°C</div>
+                </div>
+                <input type="range" min="0" max="50" value="32" oninput="document.getElementById('temp-value').textContent = this.value">
+            </div>
+
+            <div class="title" style="margin-top: 48px;">RISK AGGREGATOR</div>
+            <div class="risk-circle">
+                <svg width="140" height="140" style="transform: rotate(-90deg);">
+                    <circle cx="70" cy="70" r="60" stroke="#353534" stroke-width="8" fill="none"/>
+                    <circle cx="70" cy="70" r="60" stroke="#FF9800" stroke-width="8" fill="none" stroke-dasharray="271 377" stroke-linecap="round"/>
+                </svg>
+                <div class="risk-percentage">
+                    <div class="risk-percentage-value">72%</div>
+                    <div class="risk-label">HIGH RISK</div>
+                </div>
+            </div>
+
+            <div class="risk-grid">
+                <div class="risk-grid-item">
+                    <div class="risk-grid-label">Low</div>
+                    <div class="risk-grid-value">5</div>
+                </div>
+                <div class="risk-grid-item">
+                    <div class="risk-grid-label">Med</div>
+                    <div class="risk-grid-value">8</div>
+                </div>
+                <div class="risk-grid-item">
+                    <div class="risk-grid-label">High</div>
+                    <div class="risk-grid-value">2</div>
+                </div>
+                <div class="risk-grid-item">
+                    <div class="risk-grid-label">Crit</div>
+                    <div class="risk-grid-value">0</div>
+                </div>
+            </div>
+
+            <button class="btn-primary">INITIATE SIMULATION</button>
+
+            <div style="margin-top: auto; padding-top: 48px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; color: #757575; font-size: 0.875rem; cursor: pointer;">
+                    <span class="material-icons" style="font-size: 18px;">history_edu</span>
+                    <span>Audit Log</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; color: #757575; font-size: 0.875rem; cursor: pointer;">
+                    <span class="material-icons" style="font-size: 18px;">terminal</span>
+                    <span>System Health</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- HEADER -->
+            <div class="header">
+                <div class="header-left">
+                    <div class="logo">CLIMATE GUARDIAN</div>
+                    <div class="location">
+                        <span class="material-icons" style="font-size: 18px;">location_on</span>
+                        <span>Chennai</span>
+                        <span class="material-icons" style="font-size: 18px;">expand_more</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="nav">
+                        <div class="nav-item active">SIMULATION</div>
+                        <div class="nav-item">INTELLIGENCE</div>
+                        <div class="nav-item">RESPONSE</div>
+                        <div class="nav-item">RESOURCES</div>
+                    </div>
+                    <div class="time">
+                        <span class="material-icons" style="font-size: 18px;">schedule</span>
+                        <span id="current-time">14:42:08 IST</span>
+                    </div>
+                    <span class="material-icons">notifications</span>
+                    <span class="material-icons">settings</span>
+                    <div class="avatar">AD</div>
+                </div>
+            </div>
+
+            <!-- CONTENT GRID -->
+            <div class="content">
+                <!-- CENTER COLUMN -->
+                <div>
+                    <div class="alert-critical">
+                        <span class="material-icons">warning</span>
+                        <span style="font-weight: 500;">CRITICAL SATURATION: ZONE 4</span>
+                    </div>
+
+                    <div class="map-placeholder">
+                        <div style="text-align: center;">
+                            <span class="material-icons" style="font-size: 64px; color: #757575;">map</span>
+                            <div style="margin-top: 16px; color: #757575;">Interactive Map - Chennai District</div>
+                            <div style="margin-top: 8px; font-size: 0.75rem; color: #757575;">Real-time Risk Visualization</div>
+                        </div>
+                        <div class="simulation-controls">
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <button style="width: 40px; height: 40px; background: #9ecaff; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                    <span class="material-icons" style="color: #131313;">play_arrow</span>
+                                </button>
+                                <div style="flex: 1;">
+                                    <div style="display: flex; justify-between; font-size: 0.75rem; margin-bottom: 8px;">
+                                        <span>T-MINUS 12:00:00</span>
+                                        <span>LIVE VIEW</span>
+                                        <span>FORECAST +06:00:00</span>
+                                    </div>
+                                    <input type="range" min="0" max="12" value="0" style="width: 100%;">
+                                </div>
+                                <div style="text-align: right; font-size: 0.75rem;">
+                                    <div>SEPT 24</div>
+                                    <div>14:42:00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="title">EVACUATION ROUTES</div>
+                        <div class="route-item">
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <div class="route-badge">A</div>
+                                <span>Western Expressway</span>
+                            </div>
+                            <span class="status-open">OPEN</span>
+                        </div>
+                        <div class="route-item">
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <div class="route-badge">B</div>
+                                <span>Old Mahabalipuram</span>
+                            </div>
+                            <span class="status-clear">CLEAR</span>
+                        </div>
+                        <div class="route-item">
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <div class="route-badge">C</div>
+                                <span>Coastal Bypass</span>
+                            </div>
+                            <span class="status-partial">PARTIAL</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div style="display: flex; justify-between; align-items: center; margin-bottom: 24px;">
+                            <div class="title" style="margin: 0;">SYSTEM AUDIT TRAIL</div>
+                            <span class="chip-verified">BLOCKCHAIN VERIFIED</span>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>ACTION</th>
+                                    <th>USER</th>
+                                    <th>ZONE</th>
+                                    <th>HASH</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>14:40:12</td>
+                                    <td>Manual Override</td>
+                                    <td>AD-092</td>
+                                    <td>Z4</td>
+                                    <td class="hash">0x7f2...a1c</td>
+                                </tr>
+                                <tr>
+                                    <td>14:38:45</td>
+                                    <td>Sensor Calibration</td>
+                                    <td>SYS-AUTO</td>
+                                    <td>Global</td>
+                                    <td class="hash">0x2a1...99e</td>
+                                </tr>
+                                <tr>
+                                    <td>14:35:22</td>
+                                    <td>Sim Start</td>
+                                    <td>AD-092</td>
+                                    <td>Alpha-7</td>
+                                    <td class="hash">0xd44...f01</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div>
+                    <div class="card">
+                        <div style="display: flex; justify-between; align-items: center; margin-bottom: 24px;">
+                            <div class="title" style="margin: 0;">DECISION BRIEF</div>
+                            <span style="background: rgba(156, 39, 176, 0.3); color: #ce93d8; padding: 4px 12px; border-radius: 2px; font-size: 0.75rem;">AI GENERATED</span>
+                        </div>
+                        <div class="brief-section">
+                            <div class="brief-title">SITUATION</div>
+                            <div class="brief-content">Incoming storm surge predicted at 1.4m. Precipitation exceeding 40mm/hr in Zone 4. Saturation levels at 92%.</div>
+                        </div>
+                        <div class="brief-section">
+                            <div class="brief-title brief-urgent">RECOMMENDED ACTION (URGENT)</div>
+                            <div class="brief-content">Initiate Category 2 evacuation for riverside residents in District Alpha-7. Secure floodgates at the North Terminal.</div>
+                        </div>
+                        <div class="brief-section">
+                            <div class="brief-title">RESOURCES</div>
+                            <div class="resources">
+                                <div class="resource-item">
+                                    <span class="material-icons" style="color: #9ecaff;">medical_services</span>
+                                    <div class="resource-value">12</div>
+                                    <div class="resource-label">Responders</div>
+                                </div>
+                                <div class="resource-item">
+                                    <span class="material-icons" style="color: #9ecaff;">home_work</span>
+                                    <div class="resource-value">04</div>
+                                    <div class="resource-label">Medical</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div style="display: flex; justify-between; align-items: center; margin-bottom: 24px;">
+                            <div class="title" style="margin: 0;">ACTIVE ALERTS</div>
+                            <span style="font-size: 0.75rem; color: #757575;">03 ACTIVE</span>
+                        </div>
+                        <div class="alert-item alert-critical-item">
+                            <div class="alert-header">
+                                <span>Zone 4 - Critical</span>
+                                <span class="alert-time">2m ago</span>
+                            </div>
+                            <div class="alert-desc">Severe flooding risk detected</div>
+                        </div>
+                        <div class="alert-item alert-warning-item">
+                            <div class="alert-header">
+                                <span>Zone 7 - Advisory</span>
+                                <span class="alert-time">14m ago</span>
+                            </div>
+                            <div class="alert-desc">Wind speeds exceeding 60km/h</div>
+                        </div>
+                        <div class="alert-item alert-info-item">
+                            <div class="alert-header">
+                                <span>Zone 2 - Threshold</span>
+                                <span class="alert-time">42m ago</span>
+                            </div>
+                            <div class="alert-desc">Humidity spikes detected</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAB -->
+        <div class="fab">
+            <span class="material-icons" style="color: white;">emergency</span>
+        </div>
+    </div>
+
+    <script>
+        // Update time every second
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('en-IN') + ' IST';
+        }, 1000);
+    </script>
+</body>
+</html>

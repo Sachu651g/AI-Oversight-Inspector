@@ -1,0 +1,21 @@
+# Climate Guardian - Data Collector Requirements
+
+# Core dependencies
+pandas>=2.0.0
+numpy>=1.24.0
+requests>=2.31.0
+
+# Database
+psycopg2-binary>=2.9.0
+
+# Data processing
+openpyxl>=3.1.0  # For Excel files
+xlrd>=2.0.0  # For older Excel formats
+
+# Geospatial (optional)
+geopandas>=0.14.0
+shapely>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0  # For environment variables
+schedule>=1.2.0  # For automated scheduling

@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# Environment
+.env
+.env.local
+*.key
+
+# Model weights (large files — use HF Hub instead)
+oversight_model/
+*.safetensors
+*.bin
+*.gguf
+
+# PNG assets — included in GitHub so judges can see training evidence
+# round2_oversight_inspector/assets/*.png  <- intentionally NOT excluded
+
+# Logs
+*.log
+wandb/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Test artifacts
+.pytest_cache/
+.hypothesis/
+htmlcov/
+.coverage
+
+# hf_space_clone is a deployment mirror — not for active development
+# See README.md and REPO_STRUCTURE.md for folder guide

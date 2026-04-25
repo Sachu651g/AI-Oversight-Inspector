@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "openenv-email-ops"
+version = "1.0.0"
+description = "Enterprise inbox simulation RL environment for AI agent training — email triage + AI Oversight Inspector"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [
+    { name = "Sachin S Gunagi" }
+]
+keywords = [
+    "reinforcement-learning", "openenv", "llm", "email", "multi-agent",
+    "ai-safety", "scalable-oversight", "grpo", "rl-environment"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pydantic>=2.0,<3.0",
+    "pyyaml>=6.0.1",
+    "openai>=1.0.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+    "openenv-core>=0.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "hypothesis>=6.100.0",
+]
+train = [
+    "trl>=0.8.0",
+    "unsloth",
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "matplotlib>=3.7.0",
+    "numpy>=1.24.0",
+]
+
+[project.urls]
+"Homepage" = "https://huggingface.co/spaces/sachingunagi66/openenv-email-ops"
+"Repository" = "https://github.com/Sachu651g/Email-Env"
+"Bug Tracker" = "https://github.com/Sachu651g/Email-Env/issues"
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.openenv]
+name = "openenv-email-ops"
+version = "1.0.0"
+tasks = ["easy", "medium", "hard"]
