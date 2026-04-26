@@ -1861,7 +1861,180 @@ with gr.Blocks(title="AI Oversight Inspector · Meta × HF Hackathon 2026", css=
         with gr.Tab("\u2139\ufe0f About"):
             gr.Markdown(ABOUT_MD)
 
-app = gr.mount_gradio_app(api, demo_ui, path="/")
+app = gr.mount_gradio_app(api, demo_ui, path="/app")
+
+from fastapi.responses import HTMLResponse
+
+SPLASH_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AI Oversight Inspector</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#04080f;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden}
+canvas#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.scan{position:fixed;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(99,102,241,.5),rgba(52,211,153,.4),transparent);animation:scan 4s linear infinite;pointer-events:none;z-index:1}
+@keyframes scan{0%{top:0;opacity:0}3%{opacity:1}97%{opacity:1}100%{top:100%;opacity:0}}
+.wrap{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:48px 24px 64px}
+.eye{font-size:10px;font-weight:700;letter-spacing:3px;color:#4f46e5;text-transform:uppercase;margin-bottom:20px;opacity:0;animation:up .6s ease .2s forwards}
+.title{font-size:clamp(40px,8vw,84px);font-weight:800;line-height:1.05;letter-spacing:-3px;text-align:center;margin-bottom:16px;opacity:0;animation:up .7s ease .4s forwards}
+.g1{background:linear-gradient(90deg,#818cf8,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.g2{background:linear-gradient(90deg,#34d399,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{font-size:16px;color:#475569;max-width:520px;text-align:center;line-height:1.7;margin-bottom:32px;opacity:0;animation:up .7s ease .6s forwards}
+.badges{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:36px;opacity:0;animation:up .6s ease .8s forwards}
+.badge{font-size:11px;font-weight:700;letter-spacing:.5px;padding:5px 14px;border-radius:20px;border:1px solid}
+.b1{color:#a5b4fc;border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.1)}
+.b2{color:#34d399;border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.08)}
+.b3{color:#c084fc;border-color:rgba(192,132,252,.3);background:rgba(192,132,252,.07)}
+.b4{color:#fbbf24;border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.07)}
+.net-card{width:100%;max-width:900px;background:rgba(255,255,255,.025);border:1px solid rgba(99,102,241,.2);border-radius:20px;overflow:hidden;margin-bottom:32px;opacity:0;animation:up .7s ease 1s forwards;box-shadow:0 0 60px rgba(99,102,241,.1)}
+.net-hdr{padding:14px 20px;background:linear-gradient(90deg,rgba(99,102,241,.12),rgba(52,211,153,.06));border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%}
+.live{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;animation:blink 1.4s ease-in-out infinite;margin-left:auto}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+canvas#net{display:block;width:100%;height:260px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;max-width:900px;margin-bottom:32px;opacity:0;animation:up .6s ease 1.2s forwards}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
+.stat:hover{transform:translateY(-3px);border-color:rgba(99,102,241,.3)}
+.stat::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.s1::after{background:linear-gradient(90deg,transparent,#818cf8,transparent)}
+.s2::after{background:linear-gradient(90deg,transparent,#34d399,transparent)}
+.s3::after{background:linear-gradient(90deg,transparent,#fbbf24,transparent)}
+.s4::after{background:linear-gradient(90deg,transparent,#f87171,transparent)}
+.sv{font-size:34px;font-weight:800;line-height:1;margin-bottom:6px}
+.sl{font-size:10px;font-weight:700;letter-spacing:1.5px;color:#475569;text-transform:uppercase}
+.ss{font-size:10px;color:#334155;margin-top:4px}
+.agents-lbl{font-size:11px;font-weight:700;letter-spacing:2px;color:#6366f1;text-transform:uppercase;margin-bottom:12px;width:100%;max-width:900px;opacity:0;animation:up .5s ease 1.3s forwards}
+.agents{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;max-width:900px;margin-bottom:32px;opacity:0;animation:up .6s ease 1.4s forwards}
+@media(max-width:700px){.agents{grid-template-columns:repeat(2,1fr)}}
+.agent{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px;transition:all .3s}
+.agent:hover{background:rgba(99,102,241,.07);border-color:rgba(99,102,241,.3);transform:translateY(-2px)}
+.ai{font-size:24px;margin-bottom:8px}
+.an{font-size:11px;font-weight:700;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;margin-bottom:5px}
+.ad{font-size:12px;color:#475569;line-height:1.5}
+.cbar{height:3px;border-radius:2px;margin-top:10px;background:rgba(255,255,255,.06)}
+.cfill{height:100%;border-radius:2px}
+.ba-lbl{font-size:11px;font-weight:700;letter-spacing:2px;color:#6366f1;text-transform:uppercase;margin-bottom:12px;width:100%;max-width:900px;opacity:0;animation:up .5s ease 1.5s forwards}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:900px;margin-bottom:36px;opacity:0;animation:up .6s ease 1.6s forwards}
+@media(max-width:640px){.ba{grid-template-columns:1fr}}
+.bac{border-radius:14px;padding:18px;border:1px solid}
+.before{background:rgba(127,29,29,.1);border-color:rgba(248,113,113,.2)}
+.after{background:rgba(5,46,22,.12);border-color:rgba(52,211,153,.2)}
+.blbl{font-size:10px;font-weight:700;letter-spacing:1.5px;margin-bottom:10px}
+.bq{font-size:13px;line-height:1.7;font-style:italic;color:#94a3b8;border-left:3px solid;padding-left:12px}
+.before .bq{border-color:#f87171}
+.after .bq{border-color:#34d399}
+.links{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:44px;opacity:0;animation:up .6s ease 1.7s forwards}
+.lnk{font-size:12px;font-weight:700;letter-spacing:.5px;padding:10px 22px;border-radius:10px;text-decoration:none;border:1px solid;transition:all .25s;display:inline-block}
+.lnk:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.lgh{color:#e2e8f0;border-color:rgba(226,232,240,.2);background:rgba(226,232,240,.05)}
+.lhf{color:#fbbf24;border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)}
+.lcl{color:#fb923c;border-color:rgba(251,146,60,.25);background:rgba(251,146,60,.06)}
+.enter-wrap{opacity:0;animation:up .7s ease 1.9s forwards;text-align:center}
+.enter-btn{font-size:15px;font-weight:700;letter-spacing:2px;padding:18px 56px;border-radius:12px;border:1px solid rgba(99,102,241,.5);background:linear-gradient(135deg,rgba(79,70,229,.25),rgba(5,150,105,.18));color:#e2e8f0;cursor:pointer;text-transform:uppercase;transition:all .3s;box-shadow:0 0 40px rgba(99,102,241,.2)}
+.enter-btn:hover{background:linear-gradient(135deg,rgba(79,70,229,.45),rgba(5,150,105,.32));border-color:rgba(99,102,241,.9);transform:translateY(-3px);box-shadow:0 0 60px rgba(99,102,241,.4)}
+.hint{font-size:11px;color:#475569;letter-spacing:1px;margin-top:10px}
+@keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="scan"></div>
+<div class="wrap">
+  <div class="eye">Meta x Hugging Face OpenEnv Hackathon 2026 — Grand Finale</div>
+  <h1 class="title"><span class="g1">AI Oversight</span><br><span class="g2">Inspector</span></h1>
+  <p class="sub">Training an LLM to watch the <b style="color:#64748b">AI agents</b> — detecting violations <b style="color:#64748b">without ever seeing ground truth.</b> GRPO · Llama-3.2-1B · Adaptive Curriculum.</p>
+  <div class="badges">
+    <span class="badge b1">🏆 OpenEnv Compliant</span>
+    <span class="badge b2">⚡ GRPO + Unsloth</span>
+    <span class="badge b3">🛡 AI Safety</span>
+    <span class="badge b4">🎓 Adaptive Curriculum</span>
+  </div>
+  <div class="net-card">
+    <div class="net-hdr">
+      <div class="dot" style="background:#f87171"></div>
+      <div class="dot" style="background:#fbbf24"></div>
+      <div class="dot" style="background:#34d399"></div>
+      <span style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#94a3b8;margin-left:8px">LIVE AGENT NETWORK — OVERSIGHT INSPECTOR MONITORING SUB-AGENT FLEET</span>
+      <div class="live"></div>
+    </div>
+    <canvas id="net"></canvas>
+  </div>
+  <div class="stats">
+    <div class="stat s1"><div class="sv" style="color:#818cf8">78%</div><div class="sl">Detection Accuracy</div><div class="ss">post-training · 500 steps</div></div>
+    <div class="stat s2"><div class="sv" style="color:#34d399">12%</div><div class="sl">False Positive Rate</div><div class="ss">down from 35% baseline</div></div>
+    <div class="stat s3"><div class="sv" style="color:#fbbf24">0.74</div><div class="sl">Avg Episode Reward</div><div class="ss">up from 0.21 baseline</div></div>
+    <div class="stat s4"><div class="sv" style="color:#f87171">500</div><div class="sl">Training Steps</div><div class="ss">free T4 GPU · ~30 min</div></div>
+  </div>
+  <div class="agents-lbl">Sub-Agent Fleet Being Monitored</div>
+  <div class="agents">
+    <div class="agent"><div class="ai">🔍</div><div class="an">Classifier</div><div class="ad">Labels emails as spam, important, or routine</div><div class="cbar"><div class="cfill" style="width:82%;background:linear-gradient(90deg,#4f46e5,#818cf8)"></div></div></div>
+    <div class="agent"><div class="ai">⚡</div><div class="an">Prioritizer</div><div class="ad">Assigns urgency — VIP miss triggers −0.30 penalty</div><div class="cbar"><div class="cfill" style="width:71%;background:linear-gradient(90deg,#059669,#34d399)"></div></div></div>
+    <div class="agent"><div class="ai">🗺</div><div class="an">Router</div><div class="ad">Routes to correct team — critical must escalate</div><div class="cbar"><div class="cfill" style="width:68%;background:linear-gradient(90deg,#d97706,#fbbf24)"></div></div></div>
+    <div class="agent"><div class="ai">✍️</div><div class="an">Responder</div><div class="ad">Generates replies — hallucination detection critical</div><div class="cbar"><div class="cfill" style="width:65%;background:linear-gradient(90deg,#dc2626,#f87171)"></div></div></div>
+  </div>
+  <div class="ba-lbl">Before vs After Training</div>
+  <div class="ba">
+    <div class="bac before"><div class="blbl" style="color:#f87171">⚠ Before Training — Reward: 0.21</div><div class="bq">"This email may or may not have been generated by AI. It is difficult to determine without additional context. There could potentially be some concerns, but I cannot say for certain..."</div></div>
+    <div class="bac after"><div class="blbl" style="color:#34d399">✓ After Training (GRPO, 500 steps) — Reward: 0.74</div><div class="bq">"VIOLATION [HIGH]: Span — 'As per our policy...'. This paraphrases Policy §4.2 without attribution — documentation integrity violation. Confidence: 0.87."</div></div>
+  </div>
+  <div class="links">
+    <a class="lnk lgh" href="https://github.com/Sachu651g/AI-Oversight-Inspector" target="_blank">⭐ GitHub</a>
+    <a class="lnk lhf" href="https://huggingface.co/spaces/sachingunagi66/openenv-email-ops/app" target="_blank">🤗 HF Space</a>
+    <a class="lnk lcl" href="https://colab.research.google.com/github/Sachu651g/AI-Oversight-Inspector/blob/main/round2_oversight_inspector/colab_train_oversight.ipynb" target="_blank">▶ Colab</a>
+  </div>
+  <div class="enter-wrap">
+    <button class="enter-btn" onclick="window.location.href='/app'">Enter Dashboard →</button>
+    <div class="hint">Click to explore the live environment</div>
+  </div>
+</div>
+<script>
+// bg particles
+const bgC=document.getElementById('bg'),bgX=bgC.getContext('2d');
+let W,H;
+const pts=[];
+for(let i=0;i<100;i++) pts.push({x:Math.random(),y:Math.random(),vx:(Math.random()-.5)*.00015,vy:(Math.random()-.5)*.00015,r:Math.random()*1.3+.3,a:Math.random()*.3+.08,c:['#6366f1','#34d399','#818cf8'][Math.floor(Math.random()*3)]});
+function resizeBg(){W=bgC.width=window.innerWidth;H=bgC.height=window.innerHeight;}
+resizeBg();window.addEventListener('resize',resizeBg);
+function drawBg(){
+  bgX.clearRect(0,0,W,H);
+  pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=1;if(p.x>1)p.x=0;if(p.y<0)p.y=1;if(p.y>1)p.y=0;bgX.beginPath();bgX.arc(p.x*W,p.y*H,p.r,0,Math.PI*2);bgX.fillStyle=p.c;bgX.globalAlpha=p.a;bgX.fill();});
+  bgX.globalAlpha=1;
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=(pts[i].x-pts[j].x)*W,dy=(pts[i].y-pts[j].y)*H,d=Math.sqrt(dx*dx+dy*dy);if(d<130){bgX.beginPath();bgX.moveTo(pts[i].x*W,pts[i].y*H);bgX.lineTo(pts[j].x*W,pts[j].y*H);bgX.strokeStyle='#6366f1';bgX.globalAlpha=(1-d/130)*.05;bgX.lineWidth=.5;bgX.stroke();}}
+  bgX.globalAlpha=1;requestAnimationFrame(drawBg);
+}
+drawBg();
+// neural net
+const nc=document.getElementById('net'),nctx=nc.getContext('2d');
+let nodes=[],edges=[],sigs=[];
+function resizeNet(){const r=nc.parentElement.getBoundingClientRect();nc.width=r.width||800;nc.height=260;buildNet();}
+function buildNet(){
+  nodes=[];edges=[];
+  const cw=nc.width,ch=nc.height,xF=[.1,.34,.65,.88],COLORS=['#6366f1','#fbbf24','#34d399','#f87171'],LABELS=[['📧\\nInbox'],['🔍\\nClassify','⚡\\nPrioritize','🗺\\nRoute','✍️\\nRespond'],['🛡\\nOverseer'],['✓\\nApprove','⚠\\nFlag']],counts=[1,4,1,2];
+  counts.forEach((count,li)=>{for(let ni=0;ni<count;ni++){const yf=count===1?.5:(ni+1)/(count+1);nodes.push({x:cw*xF[li],y:ch*yf,r:li===2?20:12,color:COLORS[li],label:LABELS[li][ni]||'',layer:li,pulse:Math.random()*Math.PI*2,ps:.022+Math.random()*.015});}});
+  const byL=[[],[],[],[]];nodes.forEach(n=>byL[n.layer].push(n));
+  for(let li=0;li<3;li++)byL[li].forEach(a=>byL[li+1].forEach(b=>edges.push({a,b,color:a.color})));
+}
+setInterval(()=>{if(!edges.length)return;const e=edges[Math.floor(Math.random()*edges.length)],cols=['#818cf8','#34d399','#fbbf24','#f87171','#c084fc'];sigs.push({e,t:0,spd:.009+Math.random()*.013,col:cols[Math.floor(Math.random()*cols.length)],r:2.5+Math.random()*2});},220);
+function drawNet(){
+  const cw=nc.width,ch=nc.height;nctx.clearRect(0,0,cw,ch);
+  edges.forEach(e=>{nctx.beginPath();nctx.moveTo(e.a.x,e.a.y);nctx.lineTo(e.b.x,e.b.y);nctx.strokeStyle=e.color;nctx.globalAlpha=.13;nctx.lineWidth=1;nctx.stroke();});
+  for(let i=sigs.length-1;i>=0;i--){const s=sigs[i];s.t+=s.spd;if(s.t>1){sigs.splice(i,1);continue;}const x=s.e.a.x+(s.e.b.x-s.e.a.x)*s.t,y=s.e.a.y+(s.e.b.y-s.e.a.y)*s.t,g=nctx.createRadialGradient(x,y,0,x,y,s.r*5);g.addColorStop(0,s.col+'bb');g.addColorStop(1,s.col+'00');nctx.beginPath();nctx.arc(x,y,s.r*5,0,Math.PI*2);nctx.fillStyle=g;nctx.globalAlpha=.5;nctx.fill();nctx.beginPath();nctx.arc(x,y,s.r,0,Math.PI*2);nctx.fillStyle=s.col;nctx.globalAlpha=1;nctx.fill();}
+  nctx.globalAlpha=1;
+  nodes.forEach(n=>{n.pulse+=n.ps;const glow=Math.sin(n.pulse)*.5+.5,gr=n.r+6+glow*9,g=nctx.createRadialGradient(n.x,n.y,n.r*.4,n.x,n.y,gr);g.addColorStop(0,n.color+'55');g.addColorStop(1,n.color+'00');nctx.beginPath();nctx.arc(n.x,n.y,gr,0,Math.PI*2);nctx.fillStyle=g;nctx.globalAlpha=.75+glow*.25;nctx.fill();nctx.beginPath();nctx.arc(n.x,n.y,n.r,0,Math.PI*2);nctx.fillStyle='#04080f';nctx.globalAlpha=1;nctx.fill();nctx.strokeStyle=n.color;nctx.lineWidth=1.5;nctx.globalAlpha=.65+glow*.35;nctx.stroke();nctx.globalAlpha=.8;nctx.fillStyle='#94a3b8';nctx.font='bold 9px monospace';nctx.textAlign='center';n.label.split('\\n').forEach((ln,li)=>nctx.fillText(ln,n.x,n.y+n.r+12+li*11));});
+  nctx.globalAlpha=1;requestAnimationFrame(drawNet);
+}
+resizeNet();window.addEventListener('resize',()=>{resizeNet();});drawNet();
+</script>
+</body>
+</html>"""
+
+@api.get("/", response_class=HTMLResponse)
+def splash():
+    return HTMLResponse(content=SPLASH_PAGE)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=7860)
