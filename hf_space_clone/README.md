@@ -70,7 +70,7 @@ python inference.py --dry-run
 | Resource | URL |
 |---|---|
 | GitHub | https://github.com/Sachu651g/AI-Oversight-Inspector |
-| Colab training notebook | `round2/colab_train_oversight.ipynb` |
+| Colab training notebook | `round2_oversight_inspector/colab_train_oversight.ipynb` |
 | Blog post | `round2/BLOG_POST.md` |
 
 *Built by Sachin S Gunagi for the Meta × Hugging Face OpenEnv Hackathon 2026.*
