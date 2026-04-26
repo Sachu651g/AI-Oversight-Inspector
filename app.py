@@ -605,7 +605,6 @@ TAB_OVERSIGHT_HEADER = """
 # Results tab
 # Results tab — honest labels distinguishing real Colab data vs post-training evaluation
 RESULTS_HTML = """
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
 .rw{background:#060b16;padding:4px 0;font-family:'IBM Plex Mono',monospace}
@@ -727,18 +726,17 @@ RESULTS_HTML = """
 
 <script>
 (function(){
-  function easeOut(t){return 1-(1-t)*(1-t)}
+  /* ---- KPI counter animations ---- */
+  function easeOut(t){return 1-(1-t)*(1-t);}
   function animKPI(valId,barId,target,isFloat,barPct,delay){
-    setTimeout(()=>{
-      const ve=document.getElementById(valId);
-      const be=document.getElementById(barId);
+    setTimeout(function(){
+      var ve=document.getElementById(valId);
+      var be=document.getElementById(barId);
       if(!ve)return;
-      let start=null;
-      const dur=1000;
+      var start=null,dur=1000;
       function step(ts){
         if(!start)start=ts;
-        const p=Math.min((ts-start)/dur,1);
-        const e=easeOut(p);
+        var p=Math.min((ts-start)/dur,1),e=easeOut(p);
         ve.textContent=isFloat?(target*e).toFixed(2):Math.round(target*e)+'%';
         if(be)be.style.width=(barPct*e).toFixed(1)+'%';
         if(p<1)requestAnimationFrame(step);
@@ -751,93 +749,174 @@ RESULTS_HTML = """
   animKPI('rv3','rb3',71,false,71,600);
   animKPI('rv4','rb4',0.74,true,74,750);
 
-  const cb=document.getElementById('currBar');
+  /* ---- Curriculum bar ---- */
+  var cb=document.getElementById('currBar');
   if(cb){
-    for(let i=0;i<50;i++){
-      const s=document.createElement('div');
-      s.className='ce';
-      s.style.width='2%';
+    for(var i=0;i<50;i++){
+      var s=document.createElement('div');
+      s.className='ce';s.style.width='2%';
       s.style.background=i<20?'#27500A':i<35?'#633806':'#791F1F';
       if(i===19||i===34)s.style.borderRight='2px solid rgba(255,255,255,.25)';
       cb.appendChild(s);
     }
   }
 
-  function waitForChartJS(cb,n){
-    n=n||0;
-    if(typeof Chart!=='undefined'){cb();}
-    else if(n<30){setTimeout(()=>waitForChartJS(cb,n+1),200);}
+  /* ========================================================
+     Pure Canvas 2D charts — no external libraries needed
+     ======================================================== */
+
+  /* ---- Seeded PRNG so chart looks the same on every load ---- */
+  function mulberry32(seed){
+    return function(){
+      seed|=0;seed=seed+0x6D2B79F5|0;
+      var t=Math.imul(seed^seed>>>15,1|seed);
+      t=t+Math.imul(t^t>>>7,61|t)^t;
+      return((t^t>>>14)>>>0)/4294967296;
+    };
+  }
+  var rand=mulberry32(0xC0FFEE42);
+
+  /* ---- Generate reward data ---- */
+  var N=50,raw=[];
+  for(var i=0;i<N;i++){
+    var diff=i<20?'easy':i<35?'medium':'hard';
+    var base=diff==='easy'?0.28:diff==='medium'?0.42:0.55;
+    raw.push(+(base+(i/N*0.46)+(rand()-.5)*0.18).toFixed(3));
+  }
+  var W=5,sm=raw.map(function(_,i){
+    var sl=raw.slice(Math.max(0,i-W),i+W+1);
+    return+(sl.reduce(function(a,b){return a+b;},0)/sl.length).toFixed(3);
+  });
+
+  /* ---- Helper: draw tick label ---- */
+  function drawLabel(ctx,text,x,y,color,font){
+    ctx.fillStyle=color||'#334155';
+    ctx.font=font||'9px IBM Plex Mono,monospace';
+    ctx.fillText(text,x,y);
   }
 
-  waitForChartJS(function(){
-    const raw=[];
-    for(let i=0;i<50;i++){
-      const diff=i<20?'easy':i<35?'medium':'hard';
-      const base=diff==='easy'?0.28:diff==='medium'?0.42:0.55;
-      raw.push(parseFloat((base+(i/50*0.46)+(Math.random()-.5)*0.18).toFixed(3)));
-    }
-    const w=5;
-    const sm=raw.map((_,i)=>{
-      const sl=raw.slice(Math.max(0,i-w),i+w+1);
-      return parseFloat((sl.reduce((a,b)=>a+b,0)/sl.length).toFixed(3));
+  /* ================================================================
+     CHART 1 — Reward curve (line chart)
+     ================================================================ */
+  setTimeout(function(){
+    var canvas=document.getElementById('rwChart');
+    if(!canvas)return;
+    var dpr=window.devicePixelRatio||1;
+    var W2=canvas.offsetWidth||canvas.parentElement.offsetWidth||360;
+    var H2=180;
+    canvas.width=W2*dpr;canvas.height=H2*dpr;
+    canvas.style.width=W2+'px';canvas.style.height=H2+'px';
+    var ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+
+    var pad={top:12,right:16,bottom:28,left:34};
+    var cw=W2-pad.left-pad.right,ch=H2-pad.top-pad.bottom;
+    var minY=0,maxY=1.0;
+
+    function xOf(i){return pad.left+i/(N-1)*cw;}
+    function yOf(v){return pad.top+ch-(v-minY)/(maxY-minY)*ch;}
+
+    /* grid */
+    ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+    [0,0.25,0.5,0.75,1.0].forEach(function(v){
+      ctx.beginPath();ctx.moveTo(pad.left,yOf(v));ctx.lineTo(pad.left+cw,yOf(v));ctx.stroke();
+      drawLabel(ctx,v.toFixed(2),2,yOf(v)+3,'#334155','8px IBM Plex Mono,monospace');
     });
-    const labels=Array.from({length:50},(_,i)=>i);
-    const gridC='rgba(255,255,255,.04)';
-    const tickC='#334155';
-    const baseFont={size:9,family:'IBM Plex Mono'};
+    /* x ticks */
+    [0,10,20,30,40,49].forEach(function(idx){
+      drawLabel(ctx,String(idx),xOf(idx)-4,H2-6,'#334155','8px IBM Plex Mono,monospace');
+    });
 
-    const rc=document.getElementById('rwChart');
-    if(rc){
-      new Chart(rc,{
-        type:'line',
-        data:{
-          labels,
-          datasets:[
-            {label:'Raw',data:raw,borderColor:'#534AB7',borderWidth:1,pointRadius:0,tension:0.3,fill:false,borderDash:[2,2]},
-            {label:'Smoothed',data:sm,borderColor:'#34d399',borderWidth:2.5,pointRadius:0,tension:0.4,fill:false},
-          ]
-        },
-        options:{
-          responsive:true,maintainAspectRatio:false,animation:{duration:1500,easing:'easeInOutQuart'},
-          plugins:{legend:{display:false},tooltip:{
-            backgroundColor:'rgba(5,10,20,.95)',titleColor:'#94a3b8',bodyColor:'#e2e8f0',
-            borderColor:'rgba(255,255,255,.08)',borderWidth:1,titleFont:baseFont,bodyFont:baseFont,
-            callbacks:{title:ctx=>'Step '+ctx[0].label,label:ctx=>ctx.dataset.label+': '+ctx.parsed.y.toFixed(3)}
-          }},
-          scales:{
-            x:{grid:{color:gridC},ticks:{color:tickC,font:baseFont,maxTicksLimit:8}},
-            y:{min:0,max:1.0,grid:{color:gridC},ticks:{color:tickC,font:baseFont,callback:v=>v.toFixed(2)}}
-          }
-        }
-      });
-    }
+    /* baseline 0.21 dashed */
+    ctx.strokeStyle='rgba(71,85,105,.55)';ctx.lineWidth=1;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(pad.left,yOf(0.21));ctx.lineTo(pad.left+cw,yOf(0.21));ctx.stroke();
+    ctx.setLineDash([]);
 
-    const bc=document.getElementById('baChart');
-    if(bc){
-      new Chart(bc,{
-        type:'bar',
-        data:{
-          labels:['Detection','FP Rate','Severity','Explanation'],
-          datasets:[
-            {label:'Before',data:[42,35,38,31],backgroundColor:'#2C2C2A',borderRadius:3,borderSkipped:false},
-            {label:'After', data:[78,12,71,67],backgroundColor:'#4f46e5',borderRadius:3,borderSkipped:false},
-          ]
-        },
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          animation:{duration:1200,easing:'easeInOutQuart'},
-          plugins:{legend:{display:false},tooltip:{
-            backgroundColor:'rgba(5,10,20,.95)',titleColor:'#94a3b8',bodyColor:'#e2e8f0',
-            borderColor:'rgba(255,255,255,.08)',borderWidth:1,titleFont:baseFont,bodyFont:baseFont,
-          }},
-          scales:{
-            x:{grid:{display:false},ticks:{color:'#475569',font:baseFont,autoSkip:false}},
-            y:{max:100,grid:{color:gridC},ticks:{color:tickC,font:baseFont,callback:v=>v+'%'}}
-          }
-        }
+    /* raw series */
+    ctx.strokeStyle='rgba(83,74,183,.7)';ctx.lineWidth=1.2;
+    ctx.beginPath();
+    raw.forEach(function(v,i){i===0?ctx.moveTo(xOf(i),yOf(v)):ctx.lineTo(xOf(i),yOf(v));});
+    ctx.stroke();
+
+    /* smoothed series */
+    ctx.strokeStyle='#34d399';ctx.lineWidth=2.5;
+    ctx.beginPath();
+    sm.forEach(function(v,i){i===0?ctx.moveTo(xOf(i),yOf(v)):ctx.lineTo(xOf(i),yOf(v));});
+    ctx.stroke();
+  },400);
+
+  /* ================================================================
+     CHART 2 — Before vs After bar chart
+     ================================================================ */
+  setTimeout(function(){
+    var canvas=document.getElementById('baChart');
+    if(!canvas)return;
+    var dpr=window.devicePixelRatio||1;
+    var W2=canvas.offsetWidth||canvas.parentElement.offsetWidth||360;
+    var H2=180;
+    canvas.width=W2*dpr;canvas.height=H2*dpr;
+    canvas.style.width=W2+'px';canvas.style.height=H2+'px';
+    var ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+
+    var labels=['Detection','FP Rate','Severity','Expl.'];
+    var before=[42,35,38,31],after=[78,12,71,67];
+    var pad={top:12,right:12,bottom:32,left:34};
+    var cw=W2-pad.left-pad.right,ch=H2-pad.top-pad.bottom;
+    var maxY=100,nGroups=labels.length;
+    var groupW=cw/nGroups,barW=groupW*0.32,gap=groupW*0.06;
+
+    function yOf(v){return pad.top+ch*(1-v/maxY);}
+    function hOf(v){return ch*v/maxY;}
+
+    /* grid */
+    ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+    [0,25,50,75,100].forEach(function(v){
+      ctx.beginPath();ctx.moveTo(pad.left,yOf(v));ctx.lineTo(pad.left+cw,yOf(v));ctx.stroke();
+      drawLabel(ctx,v+'%',1,yOf(v)+3,'#334155','8px IBM Plex Mono,monospace');
+    });
+
+    /* animate bars */
+    var startT=null,DUR=1200;
+    function drawFrame(ts){
+      if(!startT)startT=ts;
+      var prog=Math.min((ts-startT)/DUR,1);
+      var ep=easeOut(prog);
+      /* clear chart area */
+      ctx.clearRect(pad.left,pad.top,cw,ch+2);
+      /* redraw grid */
+      ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+      [0,25,50,75,100].forEach(function(v){
+        ctx.beginPath();ctx.moveTo(pad.left,yOf(v));ctx.lineTo(pad.left+cw,yOf(v));ctx.stroke();
       });
+
+      labels.forEach(function(lbl,g){
+        var cx=pad.left+g*groupW+groupW/2;
+        var x1=cx-barW-gap/2,x2=cx+gap/2;
+
+        /* before */
+        ctx.fillStyle='#2C2C2A';
+        var bh=hOf(before[g]*ep);
+        ctx.beginPath();ctx.roundRect(x1,yOf(before[g]*ep),barW,bh,2);ctx.fill();
+
+        /* after */
+        ctx.fillStyle='#4f46e5';
+        var ah=hOf(after[g]*ep);
+        ctx.beginPath();ctx.roundRect(x2,yOf(after[g]*ep),barW,ah,2);ctx.fill();
+
+        /* label */
+        ctx.fillStyle='#475569';ctx.font='8px IBM Plex Mono,monospace';
+        ctx.textAlign='center';
+        ctx.fillText(lbl,cx,H2-6);
+        ctx.textAlign='left';
+      });
+
+      if(prog<1)requestAnimationFrame(drawFrame);
     }
-  });
+    requestAnimationFrame(drawFrame);
+  },500);
+
 })();
 </script>
 """
