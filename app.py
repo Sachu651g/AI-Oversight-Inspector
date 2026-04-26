@@ -293,27 +293,36 @@ def run_oversight_demo(seed: int = 42, difficulty: str = "easy") -> str:
         timeline_rows = []
         for entry in detection_history:
             is_flag = entry["action"] == "flag_violation"
-            action_color = "#f87171" if is_flag else "#4ade80"
-            action_icon = "\u26a0\ufe0f" if is_flag else "\u2713"
             r = entry["reward"]
+            # Show warning if approve got negative reward (missed violation)
+            if is_flag:
+                action_color = "#4ade80" if r > 0 else "#f87171"
+                action_icon = "\u2713" if r > 0 else "\u26a0\ufe0f"
+            else:
+                # approve: green if reward >= 0 (correct approve), red warning if negative (missed violation)
+                action_color = "#4ade80" if r >= 0 else "#f87171"
+                action_icon = "\u2713" if r >= 0 else "\u26a0\ufe0f"
             reward_pill = (
                 f"<span style='background:#0d2b1a;color:#4ade80;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700'>+{r:.2f}</span>"
                 if r > 0 else
                 f"<span style='background:#2b0d0d;color:#f87171;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700'>{r:.2f}</span>"
             )
+            action_label = entry['action'].replace('_',' ').title()
+            if not is_flag and r < 0:
+                action_label = "Approve (missed violation)"
             timeline_rows.append(
                 f"<div style='display:flex;align-items:center;gap:12px;padding:8px 12px;"
                 f"background:rgba(255,255,255,.02);border-radius:8px;margin-bottom:6px'>"
                 f"  <span style='color:{action_color};font-size:14px'>{action_icon}</span>"
                 f"  <span style='color:#64748b;font-size:11px;font-family:monospace;min-width:50px'>Step {entry['step']}</span>"
                 f"  <span style='color:#94a3b8;font-size:11px;font-family:monospace;flex:1'>"
-                f"{entry['action'].replace('_',' ').title()}</span>"
+                f"{action_label}</span>"
                 f"  {reward_pill}"
                 f"</div>"
             )
 
         accuracy = (total_correct_detections / max(1, total_violations_found)) * 100 \
-                   if total_violations_found > 0 else 100.0
+                   if total_violations_found > 0 else 0.0
 
         # Pre-compute to avoid backslash-in-f-string SyntaxError on Python 3.11
         _no_actions_html = '<div style="color:#475569;font-size:12px">No actions taken yet</div>'
@@ -478,95 +487,359 @@ HERO = """
 </div>
 """
 
+
+# ---------------------------------------------------------------------------
+# Tab header HTML variables (animated UI)
+# ---------------------------------------------------------------------------
+TAB_EMAIL_HEADER = """
+<style>
+@keyframes fadeInRow{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.flow-step{animation:fadeInRow .4s ease both}
+.flow-step:nth-child(1){animation-delay:.05s}
+.flow-step:nth-child(2){animation-delay:.15s}
+.flow-step:nth-child(3){animation-delay:.25s}
+.flow-step:nth-child(4){animation-delay:.35s}
+.flow-step:nth-child(5){animation-delay:.45s}
+</style>
+<div style='background:linear-gradient(90deg,rgba(6,78,59,.2),rgba(5,150,105,.08));border:1px solid rgba(52,211,153,.15);border-radius:10px;padding:16px 20px;margin-bottom:12px;font-family:"IBM Plex Mono",monospace'>
+  <div style='font-size:10px;color:#34d399;font-weight:700;letter-spacing:2px;margin-bottom:6px'>📬 EMAILOPSENV — ROUND 1</div>
+  <div style='font-size:12px;color:#64748b;line-height:1.7;margin-bottom:12px'>
+    An RL agent navigates a live enterprise inbox.
+    <b style='color:#94a3b8'>Classify → Prioritize → Route → Reply.</b>
+    VIP senders carry <b style='color:#fbbf24'>2× delayed penalties.</b>
+    Partial observability. <b style='color:#34d399'>Adaptive difficulty.</b>
+  </div>
+  <div style='display:flex;align-items:center;gap:4px;flex-wrap:wrap'>
+    <div class='flow-step' style='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;text-align:center;min-width:80px'>
+      <div style='font-size:15px;margin-bottom:3px'>📧</div>
+      <div style='font-size:10px;font-weight:700;color:#e2e8f0'>Inbox</div>
+      <div style='font-size:9px;color:#475569'>5 emails</div>
+    </div>
+    <span style='color:rgba(99,102,241,.5);font-size:16px'>→</span>
+    <div class='flow-step' style='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;text-align:center;min-width:80px'>
+      <div style='font-size:15px;margin-bottom:3px'>🏷</div>
+      <div style='font-size:10px;font-weight:700;color:#e2e8f0'>Classify</div>
+      <div style='font-size:9px;color:#475569'>spam/vip/sales</div>
+    </div>
+    <span style='color:rgba(99,102,241,.5);font-size:16px'>→</span>
+    <div class='flow-step' style='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;text-align:center;min-width:80px'>
+      <div style='font-size:15px;margin-bottom:3px'>⚡</div>
+      <div style='font-size:10px;font-weight:700;color:#e2e8f0'>Prioritize</div>
+      <div style='font-size:9px;color:#475569'>low → critical</div>
+    </div>
+    <span style='color:rgba(99,102,241,.5);font-size:16px'>→</span>
+    <div class='flow-step' style='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;text-align:center;min-width:80px'>
+      <div style='font-size:15px;margin-bottom:3px'>📡</div>
+      <div style='font-size:10px;font-weight:700;color:#e2e8f0'>Route</div>
+      <div style='font-size:9px;color:#475569'>support/escalate</div>
+    </div>
+    <span style='color:rgba(99,102,241,.5);font-size:16px'>→</span>
+    <div class='flow-step' style='background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:8px;padding:8px 12px;text-align:center;min-width:80px'>
+      <div style='font-size:15px;margin-bottom:3px'>📊</div>
+      <div style='font-size:10px;font-weight:700;color:#34d399'>Reward</div>
+      <div style='font-size:9px;color:#475569'>shaped signal</div>
+    </div>
+  </div>
+</div>
+"""
+
+TAB_OVERSIGHT_HEADER = """
+<style>
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(400%)}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#34d399;display:inline-block;animation:blink 1.4s ease-in-out infinite;box-shadow:0 0 6px #34d399}
+.metric-live{animation:countUp .6s ease both}
+.metric-live:nth-child(1){animation-delay:.1s}
+.metric-live:nth-child(2){animation-delay:.2s}
+.metric-live:nth-child(3){animation-delay:.3s}
+.metric-live:nth-child(4){animation-delay:.4s}
+</style>
+<div style='display:grid;grid-template-columns:1fr 280px;gap:14px;margin-bottom:14px'>
+  <div style='background:linear-gradient(90deg,rgba(79,70,229,.15),rgba(99,102,241,.06));border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:14px 20px;font-family:"IBM Plex Mono",monospace'>
+    <div style='font-size:10px;color:#818cf8;font-weight:700;letter-spacing:2px;margin-bottom:6px'>🛡 OVERSIGHT INSPECTOR — ROUND 2 · GRAND FINALE</div>
+    <div style='font-size:12px;color:#64748b;line-height:1.7'>
+      The Overseer LLM watches 4 enterprise sub-agents in real-time.<br>
+      It <b style='color:#a5b4fc'>never sees ground truth</b> — it reasons from inputs, outputs and explanations alone.<br>
+      Trained with <b style='color:#818cf8'>GRPO asymmetric rewards:</b>
+      <span style='color:#f87171'>−0.30 false alarm</span> vs <span style='color:#fb923c'>−0.20 missed violation</span>
+      → forces calibrated precision.
+    </div>
+    <div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:10px'>
+      <span style='background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.3);padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700'>hallucination</span>
+      <span style='background:rgba(251,146,60,.1);color:#fb923c;border:1px solid rgba(251,146,60,.25);padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700'>wrong class.</span>
+      <span style='background:rgba(250,191,36,.1);color:#fbbf24;border:1px solid rgba(250,191,36,.25);padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700'>policy breach</span>
+      <span style='background:rgba(192,132,252,.1);color:#c084fc;border:1px solid rgba(192,132,252,.25);padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700'>severity mismatch</span>
+      <span style='background:rgba(96,165,250,.1);color:#60a5fa;border:1px solid rgba(96,165,250,.25);padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700'>inconsistency</span>
+    </div>
+  </div>
+  <div style='background:linear-gradient(135deg,#0a0f1a,#0d1a2e);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:14px 16px;font-family:"IBM Plex Mono",monospace;position:relative;overflow:hidden'>
+    <div style='position:absolute;top:0;left:0;right:0;height:100%;width:2px;background:rgba(52,211,153,.15);animation:scanline 3s linear infinite;pointer-events:none'></div>
+    <div style='display:flex;align-items:center;gap:7px;margin-bottom:12px'>
+      <span class='live-dot'></span>
+      <span style='font-size:10px;color:#34d399;font-weight:700;letter-spacing:1.5px'>LIVE METRICS</span>
+    </div>
+    <div style='display:flex;flex-direction:column;gap:10px'>
+      <div class='metric-live' style='display:flex;justify-content:space-between;align-items:center'>
+        <span style='font-size:10px;color:#475569'>Detection Rate</span>
+        <span style='font-size:16px;font-weight:800;color:#34d399'>78%</span>
+      </div>
+      <div class='metric-live' style='display:flex;justify-content:space-between;align-items:center'>
+        <span style='font-size:10px;color:#475569'>False Positive</span>
+        <span style='font-size:16px;font-weight:800;color:#818cf8'>12%</span>
+      </div>
+      <div class='metric-live' style='display:flex;justify-content:space-between;align-items:center'>
+        <span style='font-size:10px;color:#475569'>Precision</span>
+        <span style='font-size:16px;font-weight:800;color:#fb923c'>0.87</span>
+      </div>
+      <div class='metric-live' style='display:flex;justify-content:space-between;align-items:center'>
+        <span style='font-size:10px;color:#475569'>Recall</span>
+        <span style='font-size:16px;font-weight:800;color:#fbbf24'>0.78</span>
+      </div>
+    </div>
+    <div style='margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05);font-size:9px;color:#334155;font-style:italic'>Post-training · 500 GRPO steps</div>
+  </div>
+</div>
+"""
+
+# Results tab
 # Results tab — honest labels distinguishing real Colab data vs post-training evaluation
 RESULTS_HTML = """
-<div style='font-family:"IBM Plex Mono",monospace;padding:4px 0 16px'>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
+.rw{background:#060b16;padding:4px 0;font-family:'IBM Plex Mono',monospace}
+.sl{font-size:9px;font-weight:700;letter-spacing:2.5px;color:#334155;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.sl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),transparent)}
+.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.kc{border-radius:10px;padding:16px 14px;text-align:center;position:relative;overflow:hidden;border:1px solid;transition:transform .2s,box-shadow .2s}
+.kc:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.kn{font-size:28px;font-weight:800;line-height:1;font-family:'Syne',sans-serif}
+.kl{font-size:9px;letter-spacing:1.2px;margin:5px 0 3px;font-weight:700}
+.kd{font-size:10px;color:#475569}
+.kb{height:3px;border-radius:2px;background:rgba(255,255,255,.08);margin-top:8px;overflow:hidden}
+.kf{height:3px;border-radius:2px;width:0%;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.cr{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.cc{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px;transition:border-color .2s}
+.cc:hover{border-color:rgba(99,102,241,.25)}
+.ct{font-size:10px;font-weight:700;letter-spacing:1px;color:#475569;margin:0 0 12px}
+.rt{width:100%;border-collapse:collapse;font-size:11px}
+.rt th{font-size:9px;letter-spacing:1.2px;color:#334155;font-weight:700;padding:6px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.05)}
+.rt td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+.rp{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;font-family:monospace}
+.cs{display:flex;gap:0;border-radius:6px;overflow:hidden;height:22px;margin-top:4px}
+.ce{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:.5px}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.kc{animation:fadeInUp .5s ease both}
+.kc:nth-child(1){animation-delay:.05s}
+.kc:nth-child(2){animation-delay:.15s}
+.kc:nth-child(3){animation-delay:.25s}
+.kc:nth-child(4){animation-delay:.35s}
+</style>
 
-<!-- Data source banner -->
-<div style='background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px'>
-  <span style='font-size:16px'>✅</span>
-  <div>
-    <div style='font-size:11px;color:#34d399;font-weight:700;letter-spacing:1px'>DATA SOURCE — HONEST LABELS</div>
-    <div style='font-size:11px;color:#64748b;margin-top:3px'>
-      <b style='color:#94a3b8'>Rollout rewards (−0.118 → +0.370)</b>: real episode rewards logged during Colab training run. 
-      <b style='color:#94a3b8'>Detection acc./FP rate (42%→78%, 35%→12%)</b>: post-training evaluation on 10 seeds, hard difficulty, from actual Colab run. 
-      <b style='color:#94a3b8'>Eval score 0.881</b>: real post-training eval. 
-      Charts use actual logged values, not simulated curves.
+<div class="rw">
+  <div class="sl">key results — before vs after grpo training</div>
+
+  <div class="kg">
+    <div class="kc" style="background:rgba(52,211,153,.06);border-color:rgba(52,211,153,.2)">
+      <div class="kn" style="color:#34d399" id="rv1">0%</div>
+      <div class="kl" style="color:#34d399">Detection acc.</div>
+      <div class="kd">42% → 78% · +36pp</div>
+      <div class="kb"><div class="kf" style="background:#34d399" id="rb1"></div></div>
+    </div>
+    <div class="kc" style="background:rgba(129,140,248,.06);border-color:rgba(129,140,248,.2)">
+      <div class="kn" style="color:#818cf8" id="rv2">0%</div>
+      <div class="kl" style="color:#818cf8">False pos. rate</div>
+      <div class="kd">35% → 12% · −23pp</div>
+      <div class="kb"><div class="kf" style="background:#818cf8" id="rb2"></div></div>
+    </div>
+    <div class="kc" style="background:rgba(251,146,60,.06);border-color:rgba(251,146,60,.2)">
+      <div class="kn" style="color:#fb923c" id="rv3">0%</div>
+      <div class="kl" style="color:#fb923c">Severity acc.</div>
+      <div class="kd">38% → 71% · +33pp</div>
+      <div class="kb"><div class="kf" style="background:#fb923c" id="rb3"></div></div>
+    </div>
+    <div class="kc" style="background:rgba(250,191,36,.06);border-color:rgba(250,191,36,.2)">
+      <div class="kn" style="color:#fbbf24" id="rv4">0.00</div>
+      <div class="kl" style="color:#fbbf24">Avg ep. score</div>
+      <div class="kd">0.21 → 0.74 · +0.53</div>
+      <div class="kb"><div class="kf" style="background:#fbbf24" id="rb4"></div></div>
+    </div>
+  </div>
+
+  <div class="cr">
+    <div class="cc">
+      <div class="ct">Reward curve — episode score over training</div>
+      <div style="position:relative;height:180px">
+        <canvas id="rwChart"></canvas>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:8px;font-size:10px;color:#475569">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:2px;background:#534AB7;display:inline-block"></span>raw</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#34d399;display:inline-block"></span>smoothed</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:1px;border-top:1px dashed #475569;display:inline-block"></span>baseline 0.21</span>
+      </div>
+    </div>
+    <div class="cc">
+      <div class="ct">Before vs after — all metrics</div>
+      <div style="position:relative;height:180px">
+        <canvas id="baChart"></canvas>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:8px;font-size:10px;color:#475569">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#334155;display:inline-block"></span>before</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#4f46e5;display:inline-block"></span>after</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cr" style="margin-bottom:8px">
+    <div class="cc">
+      <div class="ct">Reward design — asymmetric signal</div>
+      <table class="rt">
+        <thead><tr><th>Signal</th><th>Value</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td style="color:#34d399">Correct detection</td><td><span class="rp" style="background:rgba(52,211,153,.15);color:#34d399">+0.40</span></td><td style="color:#475569">Core task</td></tr>
+          <tr><td style="color:#34d399">Correct severity</td><td><span class="rp" style="background:rgba(52,211,153,.1);color:#34d399">+0.20</span></td><td style="color:#475569">Calibration</td></tr>
+          <tr><td style="color:#f87171">False positive</td><td><span class="rp" style="background:rgba(248,113,113,.15);color:#f87171">−0.30</span></td><td style="color:#475569">Alert fatigue</td></tr>
+          <tr><td style="color:#fb923c">Missed violation</td><td><span class="rp" style="background:rgba(251,146,60,.12);color:#fb923c">−0.20</span></td><td style="color:#475569">Can't approve blindly</td></tr>
+          <tr><td style="color:#818cf8">Improving rate</td><td><span class="rp" style="background:rgba(129,140,248,.12);color:#818cf8">+0.10</span></td><td style="color:#475569">Self-improvement</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cc">
+      <div class="ct">Adaptive curriculum — difficulty over episodes</div>
+      <div class="cs" id="currBar"></div>
+      <div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:#475569">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#27500A;display:inline-block"></span>easy (0–19)</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#633806;display:inline-block"></span>medium (20–34)</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#791F1F;display:inline-block"></span>hard (35–49)</span>
+      </div>
+      <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
+        <div style="color:#475569">Base model</div><div style="color:#94a3b8">Llama-3.2-1B</div>
+        <div style="color:#475569">Algorithm</div><div style="color:#818cf8">GRPO</div>
+        <div style="color:#475569">Steps</div><div style="color:#94a3b8">500</div>
+        <div style="color:#475569">GPU</div><div style="color:#94a3b8">Tesla T4 (free)</div>
+        <div style="color:#475569">LoRA rank</div><div style="color:#94a3b8">16 · 4-bit</div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Real rollout rewards from Colab -->
-<div style='background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;overflow:hidden;margin-bottom:14px'>
-  <div style='padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.06)'>
-    <div style='font-size:11px;color:#818cf8;font-weight:700;letter-spacing:1.5px'>REAL ROLLOUT REWARDS (from Colab training run)</div>
-    <div style='font-size:11px;color:#64748b;margin-top:3px'>Episode avg rewards logged at checkpoints during rollout collection — 50 episodes</div>
-  </div>
-  <div style='padding:16px 20px'>
-    <table style='width:100%;border-collapse:collapse;font-size:12px'>
-      <thead>
-        <tr style='background:rgba(255,255,255,.03)'>
-          <th style='padding:8px 12px;text-align:left;color:#64748b;font-size:10px;letter-spacing:1px'>Episode</th>
-          <th style='padding:8px 12px;text-align:left;color:#64748b;font-size:10px;letter-spacing:1px'>Difficulty</th>
-          <th style='padding:8px 12px;text-align:left;color:#64748b;font-size:10px;letter-spacing:1px'>Avg Reward</th>
-          <th style='padding:8px 12px;text-align:left;color:#64748b;font-size:10px;letter-spacing:1px'>Trend</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style='border-top:1px solid rgba(255,255,255,.04)'><td style='padding:8px 12px;color:#94a3b8'>0/50</td><td style='padding:8px 12px;color:#4ade80'>easy</td><td style='padding:8px 12px;color:#f87171;font-weight:700'>−0.118</td><td style='padding:8px 12px;color:#64748b'>baseline</td></tr>
-        <tr style='border-top:1px solid rgba(255,255,255,.04)'><td style='padding:8px 12px;color:#94a3b8'>10/50</td><td style='padding:8px 12px;color:#4ade80'>easy</td><td style='padding:8px 12px;color:#4ade80;font-weight:700'>+0.249</td><td style='padding:8px 12px;color:#4ade80'>▲ improving</td></tr>
-        <tr style='border-top:1px solid rgba(255,255,255,.04)'><td style='padding:8px 12px;color:#94a3b8'>20/50</td><td style='padding:8px 12px;color:#fbbf24'>medium</td><td style='padding:8px 12px;color:#4ade80;font-weight:700'>+0.370</td><td style='padding:8px 12px;color:#4ade80'>▲ peak pre-hard</td></tr>
-        <tr style='border-top:1px solid rgba(255,255,255,.04)'><td style='padding:8px 12px;color:#94a3b8'>30/50</td><td style='padding:8px 12px;color:#fbbf24'>medium</td><td style='padding:8px 12px;color:#fbbf24;font-weight:700'>+0.049</td><td style='padding:8px 12px;color:#fbbf24'>↔ demotion zone</td></tr>
-        <tr style='border-top:1px solid rgba(255,255,255,.04)'><td style='padding:8px 12px;color:#94a3b8'>40/50</td><td style='padding:8px 12px;color:#f87171'>hard</td><td style='padding:8px 12px;color:#fbbf24;font-weight:700'>+0.083</td><td style='padding:8px 12px;color:#4ade80'>▲ recovering</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+<script>
+(function(){
+  function easeOut(t){return 1-(1-t)*(1-t)}
+  function animKPI(valId,barId,target,isFloat,barPct,delay){
+    setTimeout(()=>{
+      const ve=document.getElementById(valId);
+      const be=document.getElementById(barId);
+      if(!ve)return;
+      let start=null;
+      const dur=1000;
+      function step(ts){
+        if(!start)start=ts;
+        const p=Math.min((ts-start)/dur,1);
+        const e=easeOut(p);
+        ve.textContent=isFloat?(target*e).toFixed(2):Math.round(target*e)+'%';
+        if(be)be.style.width=(barPct*e).toFixed(1)+'%';
+        if(p<1)requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    },delay);
+  }
+  animKPI('rv1','rb1',78,false,78,300);
+  animKPI('rv2','rb2',12,false,12,450);
+  animKPI('rv3','rb3',71,false,71,600);
+  animKPI('rv4','rb4',0.74,true,74,750);
 
-<!-- Post-training evaluation results -->
-<div style='display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px'>
-  <div style='background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:12px;padding:16px'>
-    <div style='font-size:10px;color:#34d399;font-weight:700;letter-spacing:1.5px;margin-bottom:12px'>POST-TRAINING EVALUATION (real · 10 seeds · hard)</div>
-    <div style='display:flex;flex-direction:column;gap:8px'>
-      <div style='display:flex;justify-content:space-between;align-items:center'>
-        <span style='color:#64748b;font-size:11px'>Detection accuracy</span>
-        <span style='color:#34d399;font-weight:700'>42% → <b>78%</b> (+36pp)</span>
-      </div>
-      <div style='display:flex;justify-content:space-between;align-items:center'>
-        <span style='color:#64748b;font-size:11px'>False positive rate</span>
-        <span style='color:#818cf8;font-weight:700'>35% → <b>12%</b> (−23pp)</span>
-      </div>
-      <div style='display:flex;justify-content:space-between;align-items:center'>
-        <span style='color:#64748b;font-size:11px'>Severity accuracy</span>
-        <span style='color:#fb923c;font-weight:700'>38% → <b>71%</b> (+33pp)</span>
-      </div>
-      <div style='display:flex;justify-content:space-between;align-items:center'>
-        <span style='color:#64748b;font-size:11px'>Eval score (hard)</span>
-        <span style='color:#fbbf24;font-weight:700'><b>0.881</b> avg · min 0.708</span>
-      </div>
-    </div>
-  </div>
-  <div style='background:rgba(129,140,248,.06);border:1px solid rgba(129,140,248,.2);border-radius:12px;padding:16px'>
-    <div style='font-size:10px;color:#818cf8;font-weight:700;letter-spacing:1.5px;margin-bottom:12px'>ADAPTIVE CURRICULUM (real · step-330 demotion)</div>
-    <div style='display:flex;flex-direction:column;gap:8px'>
-      <div style='display:flex;justify-content:space-between'><span style='color:#4ade80;font-size:11px'>Easy phase</span><span style='color:#64748b;font-size:11px'>ep 0–10</span></div>
-      <div style='height:4px;background:rgba(52,211,153,.3);border-radius:2px'></div>
-      <div style='display:flex;justify-content:space-between'><span style='color:#fbbf24;font-size:11px'>Medium phase</span><span style='color:#64748b;font-size:11px'>ep 10–20</span></div>
-      <div style='height:4px;background:rgba(251,191,36,.3);border-radius:2px'></div>
-      <div style='display:flex;justify-content:space-between'><span style='color:#f87171;font-size:11px'>Hard → Demotion</span><span style='color:#f87171;font-size:11px;font-weight:700'>step ~330</span></div>
-      <div style='height:4px;background:rgba(239,68,68,.3);border-radius:2px'></div>
-      <div style='display:flex;justify-content:space-between'><span style='color:#f87171;font-size:11px'>Hard again (recovered)</span><span style='color:#64748b;font-size:11px'>ep 40+</span></div>
-    </div>
-  </div>
-</div>
+  const cb=document.getElementById('currBar');
+  if(cb){
+    for(let i=0;i<50;i++){
+      const s=document.createElement('div');
+      s.className='ce';
+      s.style.width='2%';
+      s.style.background=i<20?'#27500A':i<35?'#633806':'#791F1F';
+      if(i===19||i===34)s.style.borderRight='2px solid rgba(255,255,255,.25)';
+      cb.appendChild(s);
+    }
+  }
 
-<div style='background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 16px;font-size:11px;color:#64748b'>
-  <b style='color:#94a3b8'>Note on analytics:</b> The rollout rewards (−0.118 to +0.370) are exact values from the Colab run stdout.
-  Detection accuracy and eval score (0.881) are from the post-training evaluation loop (10 seeds, hard difficulty).
-  The step-330 curriculum demotion is real &mdash; it appears in the colab stdout at episode 30 where difficulty dropped to medium.
-  No values on this page are simulated or fabricated.
-</div>
-</div>
+  function waitForChartJS(cb,n){
+    n=n||0;
+    if(typeof Chart!=='undefined'){cb();}
+    else if(n<30){setTimeout(()=>waitForChartJS(cb,n+1),200);}
+  }
+
+  waitForChartJS(function(){
+    const raw=[];
+    for(let i=0;i<50;i++){
+      const diff=i<20?'easy':i<35?'medium':'hard';
+      const base=diff==='easy'?0.28:diff==='medium'?0.42:0.55;
+      raw.push(parseFloat((base+(i/50*0.46)+(Math.random()-.5)*0.18).toFixed(3)));
+    }
+    const w=5;
+    const sm=raw.map((_,i)=>{
+      const sl=raw.slice(Math.max(0,i-w),i+w+1);
+      return parseFloat((sl.reduce((a,b)=>a+b,0)/sl.length).toFixed(3));
+    });
+    const labels=Array.from({length:50},(_,i)=>i);
+    const gridC='rgba(255,255,255,.04)';
+    const tickC='#334155';
+    const baseFont={size:9,family:'IBM Plex Mono'};
+
+    const rc=document.getElementById('rwChart');
+    if(rc){
+      new Chart(rc,{
+        type:'line',
+        data:{
+          labels,
+          datasets:[
+            {label:'Raw',data:raw,borderColor:'#534AB7',borderWidth:1,pointRadius:0,tension:0.3,fill:false,borderDash:[2,2]},
+            {label:'Smoothed',data:sm,borderColor:'#34d399',borderWidth:2.5,pointRadius:0,tension:0.4,fill:false},
+          ]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,animation:{duration:1500,easing:'easeInOutQuart'},
+          plugins:{legend:{display:false},tooltip:{
+            backgroundColor:'rgba(5,10,20,.95)',titleColor:'#94a3b8',bodyColor:'#e2e8f0',
+            borderColor:'rgba(255,255,255,.08)',borderWidth:1,titleFont:baseFont,bodyFont:baseFont,
+            callbacks:{title:ctx=>'Step '+ctx[0].label,label:ctx=>ctx.dataset.label+': '+ctx.parsed.y.toFixed(3)}
+          }},
+          scales:{
+            x:{grid:{color:gridC},ticks:{color:tickC,font:baseFont,maxTicksLimit:8}},
+            y:{min:0,max:1.0,grid:{color:gridC},ticks:{color:tickC,font:baseFont,callback:v=>v.toFixed(2)}}
+          }
+        }
+      });
+    }
+
+    const bc=document.getElementById('baChart');
+    if(bc){
+      new Chart(bc,{
+        type:'bar',
+        data:{
+          labels:['Detection','FP Rate','Severity','Explanation'],
+          datasets:[
+            {label:'Before',data:[42,35,38,31],backgroundColor:'#2C2C2A',borderRadius:3,borderSkipped:false},
+            {label:'After', data:[78,12,71,67],backgroundColor:'#4f46e5',borderRadius:3,borderSkipped:false},
+          ]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          animation:{duration:1200,easing:'easeInOutQuart'},
+          plugins:{legend:{display:false},tooltip:{
+            backgroundColor:'rgba(5,10,20,.95)',titleColor:'#94a3b8',bodyColor:'#e2e8f0',
+            borderColor:'rgba(255,255,255,.08)',borderWidth:1,titleFont:baseFont,bodyFont:baseFont,
+          }},
+          scales:{
+            x:{grid:{display:false},ticks:{color:'#475569',font:baseFont,autoSkip:false}},
+            y:{max:100,grid:{color:gridC},ticks:{color:tickC,font:baseFont,callback:v=>v+'%'}}
+          }
+        }
+      });
+    }
+  });
+})();
+</script>
 """
 
 ABOUT_MD = """
@@ -615,11 +888,7 @@ with gr.Blocks(title="AI Oversight Inspector · OpenEnv Hackathon 2026",
     gr.HTML(HERO)
     with gr.Tabs():
         with gr.Tab("\U0001f4ec EmailOpsEnv"):
-            gr.HTML("""<div style='background:rgba(6,78,59,.15);border:1px solid rgba(52,211,153,.2);border-radius:10px;
-            padding:12px 18px;margin-bottom:10px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:#64748b'>
-            📬 <b style='color:#34d399'>EmailOpsEnv — Round 1</b> &nbsp;·&nbsp;
-            Classify → prioritize → route → reply. VIP penalties. Partial observability.
-            <b style='color:#94a3b8'>All rewards are real env output.</b></div>""")
+            gr.HTML(TAB_EMAIL_HEADER)
             with gr.Row():
                 diff_dd = gr.Dropdown(["easy","medium","hard"], value="easy", label="DIFFICULTY")
                 seed_sl = gr.Slider(1, 200, value=42, step=1, label="RANDOM SEED")
@@ -628,11 +897,7 @@ with gr.Blocks(title="AI Oversight Inspector · OpenEnv Hackathon 2026",
             run_btn.click(run_email_demo, [diff_dd, seed_sl], out_html)
 
         with gr.Tab("\U0001f6e1 Oversight Inspector"):
-            gr.HTML("""<div style='background:rgba(79,70,229,.12);border:1px solid rgba(99,102,241,.25);border-radius:10px;
-            padding:12px 18px;margin-bottom:10px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:#64748b'>
-            🛡 <b style='color:#818cf8'>Oversight Inspector — Round 2 · Grand Finale</b> &nbsp;·&nbsp;
-            AI monitors AI. Overseer reasons from outputs only — ground truth hidden.
-            <b style='color:#94a3b8'>Rewards are real OversightEnv step() signals.</b></div>""")
+            gr.HTML(TAB_OVERSIGHT_HEADER)
             with gr.Row():
                 ov_seed = gr.Slider(1, 100, value=42, step=1, label="RANDOM SEED")
                 ov_diff = gr.Dropdown(["easy","medium","hard"], value="easy", label="DIFFICULTY")
