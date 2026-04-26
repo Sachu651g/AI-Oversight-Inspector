@@ -494,7 +494,9 @@ input[type=range] { accent-color: #6366f1 !important; }
 
 SPLASH_JS = """
 () => {
-  // Build splash HTML
+  // If ?go=1 param present, skip splash entirely
+  if (window.location.search.includes('go=1')) return;
+
   const style = document.createElement('style');
   style.textContent = `
     #oi-splash{position:fixed;inset:0;z-index:99999;background:#04080f;overflow-y:auto;overflow-x:hidden;transition:opacity .7s ease}
@@ -621,10 +623,7 @@ SPLASH_JS = """
 
   // Enter button handler
   document.getElementById('oi-enter-btn').addEventListener('click', function() {
-    splash.style.transition = 'opacity .7s ease';
-    splash.style.opacity = '0';
-    splash.style.pointerEvents = 'none';
-    setTimeout(function() { splash.style.display = 'none'; window.scrollTo(0,0); }, 750);
+    window.location.href = '/?go=1';
   });
 
   // Neural net canvas
@@ -1743,7 +1742,7 @@ with gr.Blocks(title="AI Oversight Inspector � Meta � HF Hackathon 2026", cs
         with gr.Tab("\u2139\ufe0f About"):
             gr.Markdown(ABOUT_MD)
 
-app = gr.mount_gradio_app(api, demo_ui, path="/app")
+app = gr.mount_gradio_app(api, demo_ui, path="/")
 
 from fastapi.responses import HTMLResponse
 
@@ -1865,11 +1864,11 @@ canvas#net{display:block;width:100%;height:260px}
   </div>
   <div class="links">
     <a class="lnk lgh" href="https://github.com/Sachu651g/AI-Oversight-Inspector" target="_blank">? GitHub</a>
-    <a class="lnk lhf" href="https://huggingface.co/spaces/sachingunagi66/openenv-email-ops/app" target="_blank">?? HF Space</a>
-    <a class="lnk lcl" href="https://colab.research.google.com/github/Sachu651g/AI-Oversight-Inspector/blob/main/round2_oversight_inspector/colab_train_oversight.ipynb" target="_blank">? Colab</a>
+    <a class="lnk lhf" href="https://huggingface.co/spaces/sachingunagi66/openenv-email-ops" target="_blank">🤗 HF Space</a>
+    <a class="lnk lcl" href="https://colab.research.google.com/github/Sachu651g/AI-Oversight-Inspector/blob/main/round2_oversight_inspector/colab_train_oversight.ipynb" target="_blank">▶ Colab</a>
   </div>
   <div class="enter-wrap">
-    <button class="enter-btn" onclick="window.location.href='/app'">Enter Dashboard ?</button>
+    <button class="enter-btn" onclick="window.location.href='/?go=1'">Enter Dashboard →</button>
     <div class="hint">Click to explore the live environment</div>
   </div>
 </div>
